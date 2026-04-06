@@ -45,8 +45,8 @@ const corsOptions = {
 // Apply CORS FIRST
 app.use(cors(corsOptions));
 
-// Handle preflight requests using SAME config
-app.options("*", cors(corsOptions));
+// // Handle preflight requests using SAME config
+// app.options("*", cors(corsOptions));
 
 
 // =======================
