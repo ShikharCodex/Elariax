@@ -16,32 +16,38 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // =======================
-// ✅ CORS CONFIG (IMPORTANT)
+// ✅ CORS CONFIG (BULLETPROOF)
 // =======================
 
 const allowedOrigins = [
-  "http://localhost:5173", // local dev
-  "https://elariax.vercel.app", // production frontend
+  "http://localhost:5173",
+  "https://elariax.vercel.app",
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // allow requests with no origin (like mobile apps, curl)
-      if (!origin) return callback(null, true);
+const corsOptions = {
+  origin: function (origin, callback) {
+    console.log("Incoming Origin:", origin); // 🔍 debug
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      } else {
-        return callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true, // if using cookies/auth headers
-  }),
-);
+    // allow requests with no origin (Postman, mobile apps)
+    if (!origin) return callback(null, true);
 
-// Handle preflight requests
-app.options("*", cors());
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+};
+
+// Apply CORS FIRST
+app.use(cors(corsOptions));
+
+// Handle preflight requests using SAME config
+app.options("*", cors(corsOptions));
+
 
 // =======================
 // ✅ MIDDLEWARE
@@ -51,18 +57,21 @@ app.use(helmet());
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
 
+
 // =======================
-// ✅ ROUTES (ORDER MATTERS)
+// ✅ ROUTES
 // =======================
 
 // Public routes (NO AUTH)
 app.use("/api/auth", authRoutes);
 
-// Protected routes (AUTH REQUIRED)
+// 🔥 IMPORTANT: Protect only after auth routes
 app.use(authMiddleware);
 
+// Protected routes
 app.use("/api/chat", chatRoutes);
 app.use("/api/settings", settingsRoutes);
+
 
 // =======================
 // ✅ HEALTH CHECK
@@ -72,11 +81,13 @@ app.get("/api/health", (req, res) => {
   res.json({ success: true, message: "API is healthy." });
 });
 
+
 // =======================
 // ✅ ERROR HANDLER
 // =======================
 
 app.use(errorHandler);
+
 
 // =======================
 // ✅ SERVER START
@@ -89,18 +100,18 @@ const bootstrap = async () => {
     !process.env.JWT_SECRET
   ) {
     throw new Error(
-      "Missing required env vars: MONGODB_URI, GEMINI_API_KEY, JWT_SECRET",
+      "Missing required env vars: MONGODB_URI, GEMINI_API_KEY, JWT_SECRET"
     );
   }
 
   await connectDB(process.env.MONGODB_URI);
 
   app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
   });
 };
 
 bootstrap().catch((error) => {
-  console.error("Server startup failed:", error);
+  console.error("❌ Server startup failed:", error);
   process.exit(1);
 });
